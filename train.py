@@ -14,10 +14,11 @@ sys.path.insert(0, 'nets/')
 
 from tf_ops import *
 import data_ops
+from architecture import *
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()
-   parser.add_argument('--ARCHITECTURE', required=False,default='3d',type=str,help='Architecture to use')
+   parser.add_argument('--ARCHITECTURE', required=False,default='dcgan',type=str,help='Architecture to use')
    parser.add_argument('--DATASET',      required=False,default='celeba',help='The dataset to use')
    parser.add_argument('--LEARNING_RATE',required=False,default=0.0001,type=float,help='Learning rate for the pretrained network')
    parser.add_argument('--BATCH_SIZE',   required=False,default=64,type=int,help='Batch size to use')
@@ -25,19 +26,15 @@ if __name__ == '__main__':
    a = parser.parse_args()
 
    ARCHITECTURE  = a.ARCHITECTURE
-   EPOCHS        = a.EPOCHS
    DATASET       = a.DATASET
    LEARNING_RATE = a.LEARNING_RATE
    BATCH_SIZE    = a.BATCH_SIZE
-   LOSS_METHOD   = a.LOSS_METHOD
-   UPCONVS       = bool(a.UPCONVS)
-   SELU          = bool(a.SELU)
-   L1            = bool(a.L1)
 
    EXPERIMENT_DIR = 'checkpoints/ARCHITECTURE_'+ARCHITECTURE+'/DATASET_'+DATASET+'/'
-   print EXPERIMENT_DIR
    
    IMAGES_DIR = EXPERIMENT_DIR+'images/'
+
+   DATA_DIR='/mnt/data2/images/celeba/images/'
 
    print
    print 'Creating',EXPERIMENT_DIR
@@ -50,10 +47,14 @@ if __name__ == '__main__':
    # placeholder for z
    z = tf.placeholder(tf.float32, shape=(BATCH_SIZE, 100), name='z')
 
+   train_images_list = data_ops.loadData(DATA_DIR, DATASET)
+
    real_images = tf.placeholder(tf.float32, shape=(BATCH_SIZE, 64, 64, 3), name='real_images')
+   filename_queue    = tf.train.string_input_producer(train_images_list)
+   real_images       = data_ops.read_input_queue(filename_queue, BATCH_SIZE)
 
    # generate images given z
-   gen_images = netG(z, L1, UPCONVS, SELU, BATCH_SIZE)
+   gen_images = netG(z, BATCH_SIZE)
    
    # D's decision on real data
    D_real = netD(real_images, BATCH_SIZE)
@@ -61,8 +62,17 @@ if __name__ == '__main__':
    # D's decision on generated data
    D_fake = netD(gen_images, BATCH_SIZE, reuse=True)
 
-   errD = tf.reduce_mean(D_fake)-tf.reduce_mean(D_fake)
-   errG = tf.reduce_mean(D_fake)
+   errD = tf.reduce_mean(D_fake)-tf.reduce_mean(D_real)
+   errG = -tf.reduce_mean(D_fake)
+   
+   # gradient penalty stuff
+   epsilon = tf.random_uniform([BATCH_SIZE, 1,1,1], 0.0, 1.0)
+   x_hat = real_images*epsilon + (1-epsilon)*gen_images
+   d_hat = netD(x_hat, BATCH_SIZE, reuse=True)
+   gradients = tf.gradients(d_hat, x_hat)[0]
+   slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
+   gradient_penalty = 10*tf.reduce_mean((slopes-1.0)**2)
+   errD += gradient_penalty
 
    # tensorboard summaries
    try: tf.summary.scalar('d_loss', tf.reduce_mean(errD))
@@ -75,8 +85,8 @@ if __name__ == '__main__':
    d_vars = [var for var in t_vars if 'd_' in var.name]
    g_vars = [var for var in t_vars if 'g_' in var.name]
 
-   G_train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE,beta1=0.0,beta2=0.9).minimize(errG, var_list=g_vars)
-   D_train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE,beta1=0.0,beta2=0.9).minimize(errD, var_list=d_vars, global_step=global_step)
+   G_train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE,beta1=0.5,beta2=0.9).minimize(errG, var_list=g_vars, global_step=global_step)
+   D_train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE,beta1=0.5,beta2=0.9).minimize(errD, var_list=d_vars)
 
    saver = tf.train.Saver(max_to_keep=1)
    
@@ -110,9 +120,8 @@ if __name__ == '__main__':
 
    while True:
 
-         if step > 0:
-            batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
-            sess.run([G_train_op], feed_dict={z:batch_z})
+         batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
+         sess.run([G_train_op], feed_dict={z:batch_z})
 
          for itr in xrange(5):
             batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
@@ -131,6 +140,9 @@ if __name__ == '__main__':
             saver.export_meta_graph(EXPERIMENT_DIR+'checkpoint-'+str(step)+'.meta')
             print 'Model saved\n'
 
+            batch_z  = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
+            gen_imgs = sess.run([gen_images], feed_dict={z:batch_z})
 
-
+            data_ops.saveImage(gen_imgs[0], step, IMAGES_DIR)
+            print 'Done saving'
 
