@@ -52,16 +52,16 @@ def netD(input_images, BATCH_SIZE, reuse=False):
    print 'DISCRIMINATOR reuse = '+str(reuse)
    
    conv1 = tf.layers.conv2d(input_images, 64, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv1')
-   conv1 = lrelu(conv1)
+   conv1 = bn(lrelu(conv1))
 
    conv2 = tf.layers.conv2d(conv1, 128, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv2')
-   conv2 = lrelu(conv2)
+   conv2 = bn(lrelu(conv2))
 
    conv3 = tf.layers.conv2d(conv2, 256, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv3')
-   conv3 = lrelu(conv3)
+   conv3 = bn(lrelu(conv3))
 
    conv4 = tf.layers.conv2d(conv3, 512, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv4')
-   conv4 = lrelu(conv4)
+   conv4 = bn(lrelu(conv4))
 
    conv4_flat = tf.reshape(conv4, [BATCH_SIZE, -1])
    dense = tf.layers.dense(conv4_flat, 1, reuse=reuse, name='d_dense')
