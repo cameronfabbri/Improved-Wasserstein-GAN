@@ -77,19 +77,19 @@ def concat_relu(x):
    Regular relu
 '''
 def relu(x, name='relu'):
-   return tf.nn.relu(x, name)
+   return tf.nn.relu(x)
 
 '''
    Tanh
 '''
-def tanh(x, name='tanh'):
-   return tf.nn.tanh(x, name)
+def tanh(x):
+   return tf.nn.tanh(x)
 
 '''
    Sigmoid
 '''
-def sig(x, name='sig'):
-   return tf.nn.sigmoid(x, name)
+def sig(x):
+   return tf.nn.sigmoid(x)
 
 '''
    Self normalizing neural networks paper
