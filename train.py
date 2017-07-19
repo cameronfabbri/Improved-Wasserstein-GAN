@@ -49,25 +49,13 @@ if __name__ == '__main__':
    errD_fake = netD(gen_images, BATCH_SIZE, reuse=True)
 
    # cost functions
-   #errD = tf.reduce_mean(errD_real - errD_fake)
-   errD = tf.reduce_mean(errD_real) - tf.reduce_mean(errD_fake)
    errG = -tf.reduce_mean(errD_fake)
+   errD = tf.reduce_mean(errD_real) - tf.reduce_mean(errD_fake)
 
-   '''
-   epsilon = tf.random_uniform([], 0.0, 1.0)
-   x_hat   = epsilon * real_images + (1 - epsilon) * gen_images
-   d_hat   = netD(x_hat, BATCH_SIZE, reuse=True)
-
-   ddx = tf.gradients(d_hat, x_hat)[0]
-   ddx = tf.sqrt(tf.reduce_sum(tf.square(ddx), axis=1))
-   ddx = tf.reduce_mean(tf.square(ddx - 1.0))
-
-   errD = errD + LAMBDA*ddx
-   '''
    epsilon = tf.random_uniform([BATCH_SIZE,1], 0.0, 1.0)
    differences  = gen_images - real_images
    interpolates = real_images + (epsilon*differences)
-   gradients = tf.gradients(netD(interpolates, BATCH_SIZE, reuse=True), [interpolates])[0]
+   gradients = tf.gradients(netD(interpolates, BATCH_SIZE, reuse=False), [interpolates])[0]
    slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
    gradient_penalty = tf.reduce_mean((slopes-1.)**2)
    errD += LAMBDA*gradient_penalty
