@@ -49,9 +49,11 @@ if __name__ == '__main__':
    errD_fake = netD(gen_images, BATCH_SIZE, reuse=True)
 
    # cost functions
-   errD = tf.reduce_mean(errD_real - errD_fake)
-   errG = tf.reduce_mean(errD_fake)
+   #errD = tf.reduce_mean(errD_real - errD_fake)
+   errD = tf.reduce_mean(errD_real) - tf.reduce_mean(errD_fake)
+   errG = -tf.reduce_mean(errD_fake)
 
+   '''
    epsilon = tf.random_uniform([], 0.0, 1.0)
    x_hat   = epsilon * real_images + (1 - epsilon) * gen_images
    d_hat   = netD(x_hat, BATCH_SIZE, reuse=True)
@@ -61,6 +63,14 @@ if __name__ == '__main__':
    ddx = tf.reduce_mean(tf.square(ddx - 1.0))
 
    errD = errD + LAMBDA*ddx
+   '''
+   epsilon = tf.random_uniform([BATCH_SIZE,1], 0.0, 1.0)
+   differences  = gen_images - real_images
+   interpolates = real_images + (epsilon*differences)
+   gradients = tf.gradients(netD(interpolates, BATCH_SIZE, reuse=True), [interpolates])[0]
+   slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
+   gradient_penalty = tf.reduce_mean((slopes-1.)**2)
+   errD += LAMBDA*gradient_penalty
 
    # tensorboard summaries
    tf.summary.scalar('d_loss', errD)
@@ -73,10 +83,10 @@ if __name__ == '__main__':
    g_vars = [var for var in t_vars if 'g_' in var.name]
 
    # optimize G
-   G_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5,beta2=0.9).minimize(errG, var_list=g_vars, global_step=global_step)
+   G_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.,beta2=0.9).minimize(errG, var_list=g_vars, global_step=global_step)
 
    # optimize D
-   D_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5,beta2=0.9).minimize(errD, var_list=d_vars)
+   D_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.,beta2=0.9).minimize(errD, var_list=d_vars)
 
    gpu_options = tf.GPUOptions(allow_growth=True)
 
