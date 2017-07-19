@@ -53,8 +53,8 @@ if __name__ == '__main__':
    errG = tf.reduce_mean(errD_fake)
 
    epsilon = tf.random_uniform([], 0.0, 1.0)
-   x_hat = epsilon * real_images + (1 - epsilon) * gen_images
-   d_hat = netD(x_hat, BATCH_SIZE, reuse=True)
+   x_hat   = epsilon * real_images + (1 - epsilon) * gen_images
+   d_hat   = netD(x_hat, BATCH_SIZE, reuse=True)
 
    ddx = tf.gradients(d_hat, x_hat)[0]
    ddx = tf.sqrt(tf.reduce_sum(tf.square(ddx), axis=1))
@@ -111,14 +111,15 @@ if __name__ == '__main__':
    while True:
       
       start = time.time()
+      
+      # now train the generator once! use normal distribution, not uniform!!
+      batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
+      sess.run(G_train_op, feed_dict={z:batch_z})
 
       for critic_itr in range(NUM_D):
          batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
          sess.run(D_train_op, feed_dict={z:batch_z})
 
-      # now train the generator once! use normal distribution, not uniform!!
-      batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
-      sess.run(G_train_op, feed_dict={z:batch_z})
 
       # now get all losses and summary *without* performing a training step - for tensorboard
       D_loss, G_loss, summary = sess.run([errD, errG, merged_summary_op], feed_dict={z:batch_z})
