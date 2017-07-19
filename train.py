@@ -18,7 +18,7 @@ if __name__ == '__main__':
    parser.add_argument('--DATASET',    required=False,type=str,help='The DATASET to use',default='celeba')
    parser.add_argument('--DATA_DIR',   required=True,type=str,help='Directory where data is')
    parser.add_argument('--BATCH_SIZE', required=False,type=int,help='Batch size',default=64)
-   parser.add_argument('--LAMBDA',     required=False,type=float,help='Batch size',default=10.0)
+   parser.add_argument('--LAMBDA',     required=False,type=float,help='Lambda value',default=10.0)
    parser.add_argument('--NUM_D',      required=False,type=int,help='Critic number',default=5)
    a = parser.parse_args()
 
@@ -52,27 +52,15 @@ if __name__ == '__main__':
    errD = tf.reduce_mean(errD_real - errD_fake)
    errG = tf.reduce_mean(errD_fake)
 
-   #epsilon = tf.random_uniform([], 0.0, 1.0)
-
-   # x hat, taking straight lines between points in P_r and P_g
-   #x_h = epsilon*real_images + (1.0-epsilon)*gen_images
-   #d_h = netD(x_h, BATCH_SIZE, reuse=True)
-
-   #ddx = tf.gradients(d_h, x_h)[0]
-   #ddx = tf.norm(ddx, ord=2) - 1
-   #ddx = tf.square(ddx)
-   #ddx = tf.sqrt(tf.reduce_sum(tf.square(ddx)))
-   #ddx = tf.reduce_mean(tf.square(ddx - 1.0))
-
    epsilon = tf.random_uniform([], 0.0, 1.0)
    x_hat = epsilon * real_images + (1 - epsilon) * gen_images
    d_hat = netD(x_hat, BATCH_SIZE, reuse=True)
 
    ddx = tf.gradients(d_hat, x_hat)[0]
    ddx = tf.sqrt(tf.reduce_sum(tf.square(ddx), axis=1))
-   ddx = tf.reduce_mean(tf.square(ddx - 1.0) * LAMBDA)
+   ddx = tf.reduce_mean(tf.square(ddx - 1.0))
 
-   errD = errD + ddx
+   errD = errD + LAMBDA*ddx
 
    # tensorboard summaries
    tf.summary.scalar('d_loss', errD)
@@ -125,7 +113,7 @@ if __name__ == '__main__':
       start = time.time()
 
       for critic_itr in range(NUM_D):
-         batch_z = np.random.uniform(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
+         batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
          sess.run(D_train_op, feed_dict={z:batch_z})
 
       # now train the generator once! use normal distribution, not uniform!!
@@ -143,7 +131,7 @@ if __name__ == '__main__':
          print 'Saving model...'
          saver.save(sess, CHECKPOINT_DIR+'checkpoint-'+str(step))
          saver.export_meta_graph(CHECKPOINT_DIR+'checkpoint-'+str(step)+'.meta')
-         batch_z  = np.random.uniform(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
+         batch_z  = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
          gen_imgs = sess.run([gen_images], feed_dict={z:batch_z})
 
          data_ops.saveImage(gen_imgs[0], step, IMAGES_DIR)

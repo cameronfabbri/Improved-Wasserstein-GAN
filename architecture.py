@@ -3,13 +3,6 @@ import sys
 
 from tf_ops import *
 
-'''
-   Leaky RELU
-   https://arxiv.org/pdf/1502.01852.pdf
-'''
-def lrelu(x, leak=0.2, name='lrelu'):
-   return tf.maximum(leak*x, x)
-
 def netG(z, batch_size):
    print 'GENERATOR'
    z = tf.layers.dense(z, 4*4*1024, name='g_z')
@@ -52,33 +45,25 @@ def netD(input_images, BATCH_SIZE, reuse=False):
    print 'DISCRIMINATOR reuse = '+str(reuse)
    
    conv1 = tf.layers.conv2d(input_images, 64, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv1')
-   conv1 = bn(lrelu(conv1))
+   conv1 = lrelu(conv1)
 
    conv2 = tf.layers.conv2d(conv1, 128, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv2')
-   conv2 = bn(lrelu(conv2))
+   conv2 = lrelu(conv2)
 
    conv3 = tf.layers.conv2d(conv2, 256, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv3')
-   conv3 = bn(lrelu(conv3))
+   conv3 = lrelu(conv3)
 
    conv4 = tf.layers.conv2d(conv3, 512, 5, strides=2, reuse=reuse, padding='SAME', name='d_conv4')
-   conv4 = bn(lrelu(conv4))
+   conv4 = lrelu(conv4)
 
    conv4_flat = tf.reshape(conv4, [BATCH_SIZE, -1])
    dense = tf.layers.dense(conv4_flat, 1, reuse=reuse, name='d_dense')
-   return dense
-
-   #conv5 = tf.layers.conv2d(conv4, 1, 4, strides=1, reuse=reuse, padding='SAME', name='d_conv5')
-   #return conv5
-
-   conv5_flat = tf.reshape(conv5, [BATCH_SIZE, -1])
-   dense = lrelu(tf.layers.dense(conv5_flat, 1, reuse=reuse, name='d_dense'))
 
    print 'input images:',input_images
    print 'conv1:',conv1
    print 'conv2:',conv2
    print 'conv3:',conv3
    print 'conv4:',conv4
-   print 'conv5:',conv5
    print 'dense:',dense
    print
 
@@ -86,7 +71,6 @@ def netD(input_images, BATCH_SIZE, reuse=False):
    tf.add_to_collection('vars', conv2)
    tf.add_to_collection('vars', conv3)
    tf.add_to_collection('vars', conv4)
-   tf.add_to_collection('vars', conv5)
    tf.add_to_collection('vars', dense)
    return dense
 

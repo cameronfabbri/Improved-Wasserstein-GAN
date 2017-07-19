@@ -47,26 +47,6 @@ def upconv2d(x, filters, name=None, new_height=None, new_width=None, kernel_size
    # conv with stride 1
    return tf.layers.conv2d(x_resize, filters, kernel_size, strides=1, name=name)
 
-'''
-   3d transpose convolution, but resizing first then performing conv2d with stride 1
-
-   The 5D tensor needs to be converted to the size resize_images needs, which is 4D
-   help from: https://stackoverflow.com/questions/43851999/resize-3d-image-with-5d-tensor-in-tensorflow
-
-   Assumes input tensor is (BATCH, HEIGHT, WIDTH, DEPTH, CHANNELS)
-   where DEPTH can be time or something. For example, 4 stacked
-   images that have 3 color channels, height and width of 256 with batch size of 1 would
-   be (1, 256, 256, 4, 3)
-   
-'''
-
-'''
-   L1 penalty, as seen in https://arxiv.org/pdf/1609.02612.pdf
-'''
-def l1Penalty(x, scale=0.1, name="L1Penalty"):
-    l1P = tf.contrib.layers.l1_regularizer(scale)
-    return l1P(x)
-
 
 ######## activation functions ###########
 '''
