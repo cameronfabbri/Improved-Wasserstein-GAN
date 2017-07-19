@@ -56,7 +56,6 @@ def upconv2d(x, filters, name=None, new_height=None, new_width=None, kernel_size
 def lrelu(x, leak=0.2):
    return tf.maximum(leak*x, x)
 
-
 '''
    Like concatenated relu, but with elu
    http://arxiv.org/abs/1603.05201
