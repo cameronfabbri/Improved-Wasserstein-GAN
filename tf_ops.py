@@ -16,7 +16,6 @@ import math
 def bn(x):
    return tf.layers.batch_normalization(x)
 
-
 '''
    Instance normalization
    https://arxiv.org/abs/1607.08022
@@ -60,28 +59,6 @@ def upconv2d(x, filters, name=None, new_height=None, new_width=None, kernel_size
    be (1, 256, 256, 4, 3)
    
 '''
-# TODO testing, not sure if this works correctly yet
-def upconv3d(x, filters, name, kernel_size=[1,1,1]):
-   
-   # get original depth, height, and width of the volume
-   shapes = x.get_shape().as_list()
-   depth  = shapes[1]
-   height = shapes[2]
-   width  = shapes[3]
-
-   x = tf.reshape(x, [shapes[0]*shapes[1], shapes[2], shapes[3], shapes[4]])
-
-   new_size = tf.constant([height*2, width*2])
-   resized = tf.image.resize_images(x, new_size)
-
-   # now put back to 5D
-   x = tf.reshape(resized, [shapes[0], shapes[1], height*2, width*2, shapes[4]])
-
-   # now conv with stride 1
-   out = tf.layers.conv3d(x, filters, kernel_size, strides=(1,1,1), name=name)
-   return out
-
-
 
 '''
    L1 penalty, as seen in https://arxiv.org/pdf/1609.02612.pdf

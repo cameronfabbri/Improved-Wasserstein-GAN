@@ -15,22 +15,22 @@ import data_ops
 if __name__ == '__main__':
 
    parser = argparse.ArgumentParser()
-   parser.add_argument('--DATASET',    required=True,help='The DATASET to use')
-   parser.add_argument('--DATA_DIR',   required=True,help='Directory where data is')
-   parser.add_argument('--BATCH_SIZE', required=True,help='Batch size',type=int)
+   parser.add_argument('--DATASET',    required=False,type=str,help='The DATASET to use',default='celeba')
+   parser.add_argument('--DATA_DIR',   required=True,type=str,help='Directory where data is')
+   parser.add_argument('--BATCH_SIZE', required=False,type=int,help='Batch size',default=64)
+   parser.add_argument('--LAMBDA',     required=False,type=float,help='Batch size',default=10.0)
+   parser.add_argument('--NUM_D',      required=False,type=int,help='Critic number',default=5)
    a = parser.parse_args()
 
    DATASET        = a.DATASET
    DATA_DIR       = a.DATA_DIR
    BATCH_SIZE     = a.BATCH_SIZE
+   LAMBDA         = a.LAMBDA
+   NUM_D          = a.NUM_D
    CHECKPOINT_DIR = 'checkpoints/'+DATASET+'/'
    IMAGES_DIR     = CHECKPOINT_DIR+'images/'
 
-   try: os.mkdir('checkpoints/')
-   except: pass
-   try: os.mkdir(CHECKPOINT_DIR)
-   except: pass
-   try: os.mkdir(IMAGES_DIR)
+   try: os.makedirs(IMAGES_DIR)
    except: pass
    
    # placeholders for data going into the network
@@ -52,11 +52,31 @@ if __name__ == '__main__':
    errD = tf.reduce_mean(errD_real - errD_fake)
    errG = tf.reduce_mean(errD_fake)
 
+   #epsilon = tf.random_uniform([], 0.0, 1.0)
+
+   # x hat, taking straight lines between points in P_r and P_g
+   #x_h = epsilon*real_images + (1.0-epsilon)*gen_images
+   #d_h = netD(x_h, BATCH_SIZE, reuse=True)
+
+   #ddx = tf.gradients(d_h, x_h)[0]
+   #ddx = tf.norm(ddx, ord=2) - 1
+   #ddx = tf.square(ddx)
+   #ddx = tf.sqrt(tf.reduce_sum(tf.square(ddx)))
+   #ddx = tf.reduce_mean(tf.square(ddx - 1.0))
+
+   epsilon = tf.random_uniform([], 0.0, 1.0)
+   x_hat = epsilon * real_images + (1 - epsilon) * gen_images
+   d_hat = netD(x_hat, BATCH_SIZE, reuse=True)
+
+   ddx = tf.gradients(d_hat, x_hat)[0]
+   ddx = tf.sqrt(tf.reduce_sum(tf.square(ddx), axis=1))
+   ddx = tf.reduce_mean(tf.square(ddx - 1.0) * LAMBDA)
+
+   errD = errD + ddx
+
    # tensorboard summaries
    tf.summary.scalar('d_loss', errD)
    tf.summary.scalar('g_loss', errG)
-   #tf.summary.image('real_images', real_images, max_outputs=BATCH_SIZE)
-   #tf.summary.image('generated_images', gen_images, max_outputs=BATCH_SIZE)
    merged_summary_op = tf.summary.merge_all()
 
    # get all trainable variables, and split by network G and network D
@@ -64,20 +84,17 @@ if __name__ == '__main__':
    d_vars = [var for var in t_vars if 'd_' in var.name]
    g_vars = [var for var in t_vars if 'g_' in var.name]
 
-   # clip weights in D
-   clip_values = [-0.005, 0.005]
-   clip_discriminator_var_op = [var.assign(tf.clip_by_value(var, clip_values[0], clip_values[1])) for
-      var in d_vars]
-
    # optimize G
-   G_train_op = tf.train.RMSPropOptimizer(learning_rate=0.00005).minimize(errG, var_list=g_vars, global_step=global_step)
+   G_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5,beta2=0.9).minimize(errG, var_list=g_vars, global_step=global_step)
 
    # optimize D
-   D_train_op = tf.train.RMSPropOptimizer(learning_rate=0.00005).minimize(errD, var_list=d_vars)
+   D_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5,beta2=0.9).minimize(errD, var_list=d_vars)
+
+   gpu_options = tf.GPUOptions(allow_growth=True)
 
    saver = tf.train.Saver(max_to_keep=1)
    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-   sess  = tf.Session()
+   sess  = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
    sess.run(init)
 
    summary_writer = tf.summary.FileWriter(CHECKPOINT_DIR+'/'+'logs/', graph=tf.get_default_graph())
@@ -107,16 +124,9 @@ if __name__ == '__main__':
       
       start = time.time()
 
-      # get the discriminator properly trained at the start
-      if step < 25 or step % 500 == 0:
-         n_critic = 100
-      else: n_critic = 5
-
-      # train the discriminator for 5 or 25 runs
-      for critic_itr in range(n_critic):
+      for critic_itr in range(NUM_D):
          batch_z = np.random.uniform(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
          sess.run(D_train_op, feed_dict={z:batch_z})
-         sess.run(clip_discriminator_var_op)
 
       # now train the generator once! use normal distribution, not uniform!!
       batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
@@ -126,10 +136,10 @@ if __name__ == '__main__':
       D_loss, G_loss, summary = sess.run([errD, errG, merged_summary_op], feed_dict={z:batch_z})
       summary_writer.add_summary(summary, step)
 
-      print 'step:',step,'D loss:',D_loss,'G_loss:',G_loss,'time:',time.time()-start
+      print 'step:',step,'D loss:',D_loss,'G_loss:',G_loss#,'time:',time.time()-start
       step += 1
     
-      if step%1000 == 0:
+      if step%100 == 0:
          print 'Saving model...'
          saver.save(sess, CHECKPOINT_DIR+'checkpoint-'+str(step))
          saver.export_meta_graph(CHECKPOINT_DIR+'checkpoint-'+str(step)+'.meta')
