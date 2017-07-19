@@ -1,95 +1,97 @@
-import scipy.misc as misc
-import time
+import cPickle as pickle
 import tensorflow as tf
-from architecture import netD, netG
+from scipy import misc
 import numpy as np
-import random
+import argparse
 import ntpath
 import sys
-import cv2
 import os
-from skimage import color
-import argparse
+import time
+import imageio
+
+sys.path.insert(0, 'ops/')
+sys.path.insert(0, 'nets/')
+
+from tf_ops import *
 import data_ops
 
 if __name__ == '__main__':
-
    parser = argparse.ArgumentParser()
-   parser.add_argument('--DATASET',    required=False,type=str,help='The DATASET to use',default='celeba')
-   parser.add_argument('--DATA_DIR',   required=True,type=str,help='Directory where data is')
-   parser.add_argument('--BATCH_SIZE', required=False,type=int,help='Batch size',default=64)
-   parser.add_argument('--LAMBDA',     required=False,type=float,help='Lambda value',default=10.0)
-   parser.add_argument('--NUM_D',      required=False,type=int,help='Critic number',default=5)
+   parser.add_argument('--ARCHITECTURE', required=False,default='3d',type=str,help='Architecture to use')
+   parser.add_argument('--DATASET',      required=False,default='celeba',help='The dataset to use')
+   parser.add_argument('--LEARNING_RATE',required=False,default=0.0001,type=float,help='Learning rate for the pretrained network')
+   parser.add_argument('--BATCH_SIZE',   required=False,default=64,type=int,help='Batch size to use')
+   parser.add_argument('--SELU',         required=False,default=0,type=int,help='Whether or not to use SELU')
    a = parser.parse_args()
 
-   DATASET        = a.DATASET
-   DATA_DIR       = a.DATA_DIR
-   BATCH_SIZE     = a.BATCH_SIZE
-   LAMBDA         = a.LAMBDA
-   NUM_D          = a.NUM_D
-   CHECKPOINT_DIR = 'checkpoints/'+DATASET+'/'
-   IMAGES_DIR     = CHECKPOINT_DIR+'images/'
+   ARCHITECTURE  = a.ARCHITECTURE
+   EPOCHS        = a.EPOCHS
+   DATASET       = a.DATASET
+   LEARNING_RATE = a.LEARNING_RATE
+   BATCH_SIZE    = a.BATCH_SIZE
+   LOSS_METHOD   = a.LOSS_METHOD
+   UPCONVS       = bool(a.UPCONVS)
+   SELU          = bool(a.SELU)
+   L1            = bool(a.L1)
 
+   EXPERIMENT_DIR = 'checkpoints/ARCHITECTURE_'+ARCHITECTURE+'/DATASET_'+DATASET+'/'
+   print EXPERIMENT_DIR
+   
+   IMAGES_DIR = EXPERIMENT_DIR+'images/'
+
+   print
+   print 'Creating',EXPERIMENT_DIR
    try: os.makedirs(IMAGES_DIR)
    except: pass
    
-   # placeholders for data going into the network
+   # global step that is saved with a model to keep track of how many steps/epochs
    global_step = tf.Variable(0, name='global_step', trainable=False)
-   z           = tf.placeholder(tf.float32, shape=(BATCH_SIZE, 100), name='z')
 
-   train_images_list = data_ops.loadData(DATA_DIR, DATASET)
-   filename_queue    = tf.train.string_input_producer(train_images_list)
-   real_images       = data_ops.read_input_queue(filename_queue, BATCH_SIZE)
+   # placeholder for z
+   z = tf.placeholder(tf.float32, shape=(BATCH_SIZE, 100), name='z')
 
-   # generated images
-   gen_images = netG(z, BATCH_SIZE)
+   real_images = tf.placeholder(tf.float32, shape=(BATCH_SIZE, 64, 64, 3), name='real_images')
 
-   # get the output from D on the real and fake data
-   errD_real = netD(real_images, BATCH_SIZE)
-   errD_fake = netD(gen_images, BATCH_SIZE, reuse=True)
+   # generate images given z
+   gen_images = netG(z, L1, UPCONVS, SELU, BATCH_SIZE)
+   
+   # D's decision on real data
+   D_real = netD(real_images, BATCH_SIZE)
 
-   # cost functions
-   errG = -tf.reduce_mean(errD_fake)
-   errD = tf.reduce_mean(errD_real) - tf.reduce_mean(errD_fake)
+   # D's decision on generated data
+   D_fake = netD(gen_images, BATCH_SIZE, reuse=True)
 
-   epsilon = tf.random_uniform([BATCH_SIZE,1], 0.0, 1.0)
-   differences  = gen_images - real_images
-   interpolates = real_images + (epsilon*differences)
-   gradients = tf.gradients(netD(interpolates, BATCH_SIZE, reuse=False), [interpolates])[0]
-   slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
-   gradient_penalty = tf.reduce_mean((slopes-1.)**2)
-   errD += LAMBDA*gradient_penalty
+   errD = tf.reduce_mean(D_fake)-tf.reduce_mean(D_fake)
+   errG = tf.reduce_mean(D_fake)
 
    # tensorboard summaries
-   tf.summary.scalar('d_loss', errD)
-   tf.summary.scalar('g_loss', errG)
-   merged_summary_op = tf.summary.merge_all()
+   try: tf.summary.scalar('d_loss', tf.reduce_mean(errD))
+   except:pass
+   try: tf.summary.scalar('g_loss', tf.reduce_mean(errG))
+   except:pass
 
    # get all trainable variables, and split by network G and network D
    t_vars = tf.trainable_variables()
    d_vars = [var for var in t_vars if 'd_' in var.name]
    g_vars = [var for var in t_vars if 'g_' in var.name]
 
-   # optimize G
-   G_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.,beta2=0.9).minimize(errG, var_list=g_vars, global_step=global_step)
-
-   # optimize D
-   D_train_op = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.,beta2=0.9).minimize(errD, var_list=d_vars)
-
-   gpu_options = tf.GPUOptions(allow_growth=True)
+   G_train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE,beta1=0.0,beta2=0.9).minimize(errG, var_list=g_vars)
+   D_train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE,beta1=0.0,beta2=0.9).minimize(errD, var_list=d_vars, global_step=global_step)
 
    saver = tf.train.Saver(max_to_keep=1)
+   
    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-   sess  = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+   sess = tf.Session()
    sess.run(init)
 
-   summary_writer = tf.summary.FileWriter(CHECKPOINT_DIR+'/'+'logs/', graph=tf.get_default_graph())
+   # write out logs for tensorboard to the checkpointSdir
+   summary_writer = tf.summary.FileWriter(EXPERIMENT_DIR+'/logs/', graph=tf.get_default_graph())
 
-   tf.add_to_collection('G_train_op', G_train_op)
-   tf.add_to_collection('D_train_op', D_train_op)
-   
+   tf.add_to_collection('vars', G_train_op)
+   tf.add_to_collection('vars', D_train_op)
+
+   ckpt = tf.train.get_checkpoint_state(EXPERIMENT_DIR)
    # restore previous model if there is one
-   ckpt = tf.train.get_checkpoint_state(CHECKPOINT_DIR)
    if ckpt and ckpt.model_checkpoint_path:
       print "Restoring previous model..."
       try:
@@ -100,41 +102,35 @@ if __name__ == '__main__':
          pass
    
    ########################################### training portion
-
    step = sess.run(global_step)
-   
+   merged_summary_op = tf.summary.merge_all()
+
    coord = tf.train.Coordinator()
    threads = tf.train.start_queue_runners(sess, coord=coord)
 
    while True:
-      
-      start = time.time()
-      
-      # now train the generator once! use normal distribution, not uniform!!
-      batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
-      sess.run(G_train_op, feed_dict={z:batch_z})
 
-      for critic_itr in range(NUM_D):
+         if step > 0:
+            batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
+            sess.run([G_train_op], feed_dict={z:batch_z})
+
+         for itr in xrange(5):
+            batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
+            sess.run([D_train_op], feed_dict={z:batch_z})
+
          batch_z = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
-         sess.run(D_train_op, feed_dict={z:batch_z})
+         D_loss, G_loss, summary = sess.run([errD, errG, merged_summary_op], feed_dict={z:batch_z})
 
+         summary_writer.add_summary(summary, step)
+         print 'step:',step,'D loss:',D_loss,'G_loss:',G_loss
+         step += 1
+         
+         if step%100 == 0:
+            print 'Saving model...'
+            saver.save(sess, EXPERIMENT_DIR+'checkpoint-'+str(step))
+            saver.export_meta_graph(EXPERIMENT_DIR+'checkpoint-'+str(step)+'.meta')
+            print 'Model saved\n'
 
-      # now get all losses and summary *without* performing a training step - for tensorboard
-      D_loss, G_loss, summary = sess.run([errD, errG, merged_summary_op], feed_dict={z:batch_z})
-      summary_writer.add_summary(summary, step)
-
-      print 'step:',step,'D loss:',D_loss,'G_loss:',G_loss#,'time:',time.time()-start
-      step += 1
-    
-      if step%100 == 0:
-         print 'Saving model...'
-         saver.save(sess, CHECKPOINT_DIR+'checkpoint-'+str(step))
-         saver.export_meta_graph(CHECKPOINT_DIR+'checkpoint-'+str(step)+'.meta')
-         batch_z  = np.random.normal(-1.0, 1.0, size=[BATCH_SIZE, 100]).astype(np.float32)
-         gen_imgs = sess.run([gen_images], feed_dict={z:batch_z})
-
-         data_ops.saveImage(gen_imgs[0], step, IMAGES_DIR)
-         print 'Done saving'
 
 
 
