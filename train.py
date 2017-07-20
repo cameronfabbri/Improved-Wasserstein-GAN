@@ -1,7 +1,8 @@
 import scipy.misc as misc
 import time
 import tensorflow as tf
-from architecture import netD, netG
+#from architecture import netD, netG
+from resnet import *
 import numpy as np
 import random
 import ntpath
@@ -23,7 +24,7 @@ if __name__ == '__main__':
    DATASET        = a.DATASET
    DATA_DIR       = a.DATA_DIR
    BATCH_SIZE     = a.BATCH_SIZE
-   CHECKPOINT_DIR = 'checkpoints/'+DATASET+'/'
+   CHECKPOINT_DIR = 'checkpoints/_'+DATASET+'/'
    IMAGES_DIR     = CHECKPOINT_DIR+'images/'
 
    try: os.mkdir('checkpoints/')
