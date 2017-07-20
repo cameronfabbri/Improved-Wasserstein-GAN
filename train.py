@@ -1,8 +1,8 @@
 import scipy.misc as misc
 import time
 import tensorflow as tf
-#from architecture import netD, netG
-from resnet import *
+from architecture import netD, netG
+#from resnet import *
 import numpy as np
 import random
 import ntpath
@@ -24,7 +24,7 @@ if __name__ == '__main__':
    DATASET        = a.DATASET
    DATA_DIR       = a.DATA_DIR
    BATCH_SIZE     = a.BATCH_SIZE
-   CHECKPOINT_DIR = 'checkpoints/_'+DATASET+'/'
+   CHECKPOINT_DIR = 'checkpoints/'+DATASET+'/'
    IMAGES_DIR     = CHECKPOINT_DIR+'images/'
 
    try: os.mkdir('checkpoints/')
@@ -127,7 +127,7 @@ if __name__ == '__main__':
       print 'step:',step,'D loss:',D_loss,'G_loss:',G_loss,'time:',time.time()-start
       step += 1
     
-      if step%100 == 0:
+      if step%500 == 0:
          print 'Saving model...'
          saver.save(sess, CHECKPOINT_DIR+'checkpoint-'+str(step))
          saver.export_meta_graph(CHECKPOINT_DIR+'checkpoint-'+str(step)+'.meta')
