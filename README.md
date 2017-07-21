@@ -11,9 +11,11 @@ ___
 `python train.py --DATASET=celeba --DATA_DIR=/path/to/celeba/`
 
 Other options include [SELU activations](https://arxiv.org/abs/1706.02515) and
-[layer normalization](https://arxiv.org/abs/1607.06450), which the authors of
-WGAN-GP suggest, as the discriminator does not use batch normalization because that
-would conflict with the gradient penalty. Default is to not use these, but they can be used by,
+[layer normalization](https://arxiv.org/abs/1607.06450). The discriminator does
+not use batch normalization because that would conflict with the gradient penalty,
+meaning instance normalization or layer normalization can still be used without issue.
+The authors suggest that layer normalization is used if any. Default is to not use these,
+but they can be used by,
 
 `python train.py --DATASET=celeba --DATA_DIR=/path/to/celeba/ --NORM=1`
 
