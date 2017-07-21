@@ -24,7 +24,5 @@ image like this, simply run `createPhotos.py` and point towards your checkpoint 
 
 `python createPhotos.py checkpoints/DATASET_celeba/SCALE_10/NORM_False/SELU_False/`
 
-
-
 ![img](http://i.imgur.com/SgXTiDs.jpg)
 
