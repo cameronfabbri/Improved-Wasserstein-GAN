@@ -26,3 +26,13 @@ image like this, simply run `createPhotos.py` and point towards your checkpoint 
 
 ![img](http://i.imgur.com/SgXTiDs.jpg)
 
+
+### Notes
+- Initial trials of SELU activations did not work, the model diverged pretty quickly.
+- For some reason, I was getting terrible results using `tf.layers.conv2d` as opposed
+to `tf.contrib.layers.conv2d`, and I am still unsure as to why.
+- The last layer of the discriminator is another convolution with stride 1, kernel size of 4,
+and depth of 1. I found this to work much better than the typical fully connected layer.
+- Using layer normalization seems to have more stable training, although it takes longer
+for each step (~2 seconds for batch size 128 on a GTX 1080 as opposed to ~1.5 seconds without
+layer norm). However, it seems to be converging faster, so it's possible that offsets the time.
