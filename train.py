@@ -22,6 +22,7 @@ if __name__ == '__main__':
    parser.add_argument('--NORM',       required=False,help='Use layer normalization in D',type=int,default=0)
    parser.add_argument('--SELU',       required=False,help='Use SELU',type=int,default=0)
    parser.add_argument('--SCALE',      required=False,help='Scale of gradient penalty',type=int,default=10)
+   parser.add_argument('--MAX_STEPS',  required=False,help='How long to train',type=int,default=100000)
    a = parser.parse_args()
 
    DATASET        = a.DATASET
@@ -30,14 +31,14 @@ if __name__ == '__main__':
    SCALE          = a.SCALE
    NORM           = bool(a.NORM)
    SELU           = bool(a.SELU)
+   MAX_STEPS      = a.MAX_STEPS
 
    CHECKPOINT_DIR = 'checkpoints/DATASET_'+DATASET+'/SCALE_'+str(SCALE)+'/NORM_'+str(NORM)+'/SELU_'+str(SELU)+'/'
    IMAGES_DIR     = CHECKPOINT_DIR+'images/'
-   print IMAGES_DIR
-   exit()
+   
    try: os.makedirs(IMAGES_DIR)
    except: pass
-   
+
    # placeholders for data going into the network
    global_step = tf.Variable(0, name='global_step', trainable=False)
    z           = tf.placeholder(tf.float32, shape=(BATCH_SIZE, 100), name='z')
@@ -50,8 +51,8 @@ if __name__ == '__main__':
    gen_images = netG(z, BATCH_SIZE)
 
    # get the output from D on the real and fake data
-   errD_real = netD(real_images, BATCH_SIZE)
-   errD_fake = netD(gen_images, BATCH_SIZE, reuse=True)
+   errD_real = netD(real_images, BATCH_SIZE, SELU, NORM)
+   errD_fake = netD(gen_images, BATCH_SIZE, SELU, NORM, reuse=True)
 
    # cost functions
    errD = tf.reduce_mean(errD_real) - tf.reduce_mean(errD_fake)
@@ -60,7 +61,7 @@ if __name__ == '__main__':
    # gradient penalty
    epsilon = tf.random_uniform([], 0.0, 1.0)
    x_hat = real_images*epsilon + (1-epsilon)*gen_images
-   d_hat = netD(x_hat, BATCH_SIZE, reuse=True)
+   d_hat = netD(x_hat, BATCH_SIZE, SELU, NORM, reuse=True)
    gradients = tf.gradients(d_hat, x_hat)[0]
    slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
    gradient_penalty = 10*tf.reduce_mean((slopes-1.0)**2)
@@ -112,7 +113,7 @@ if __name__ == '__main__':
 
    n_critic = 5
 
-   while True:
+   while step < MAX_STEPS:
       
       start = time.time()
 
