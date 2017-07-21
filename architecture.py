@@ -6,6 +6,25 @@ from tf_ops import *
 def netG(z, batch_size):
    print 'GENERATOR'
 
+   z = tf.layers.dense(z, 4*4*1024, name='g_z')
+   z = tf.reshape(z, [batch_size, 4, 4, 1024])
+   z = bn(relu(z))
+
+   conv1 = tf.layers.conv2d_transpose(z, 512, 5, strides=2, name='g_conv1', padding='SAME')
+   conv1 = bn(relu(conv1))
+   
+   conv2 = tf.layers.conv2d_transpose(conv1, 256, 5, strides=2, name='g_conv2', padding='SAME')
+   conv2 = bn(relu(conv2))
+
+   conv3 = tf.layers.conv2d_transpose(conv2, 128, 5, strides=2, name='g_conv3', padding='SAME')
+   conv3 = bn(relu(conv3))
+
+   conv4 = tf.layers.conv2d_transpose(conv3, 3, 5, strides=2, name='g_conv4', padding='SAME')
+   conv4 = tf.nn.tanh(conv4)
+
+   return conv4
+
+   '''
    z = tcl.fully_connected(z, 4*4*1024, activation_fn=tf.identity, scope='g_z')
    z = tf.reshape(z, [batch_size, 4, 4, 1024])
    z = tcl.batch_norm(relu(z))
@@ -29,12 +48,28 @@ def netG(z, batch_size):
    tf.add_to_collection('vars', conv3)
    tf.add_to_collection('vars', conv4)
    return conv4 
-
+   '''
 
 '''
    Discriminator network
 '''
 def netD(input_images, batch_size, reuse=False):
+
+   conv1 = tf.layers.conv2d(input_images, 64, 5, strides=2, name='d_conv1', reuse=reuse, padding='SAME')
+   conv1 = lrelu(conv1)
+   
+   conv2 = tf.layers.conv2d(conv1, 128, 5, strides=2, name='d_conv2', reuse=reuse, padding='SAME')
+   conv2 = lrelu(conv2)
+   
+   conv3 = tf.layers.conv2d(conv2, 256, 5, strides=2, name='d_conv3', reuse=reuse, padding='SAME')
+   conv3 = lrelu(conv3)
+   
+   conv4 = tf.layers.conv2d(conv3, 512, 5, strides=2, name='d_conv4', reuse=reuse, padding='SAME')
+   conv4 = lrelu(conv4)
+
+   conv5 = tf.layers.conv2d(conv4, 1, 4, strides=1, name='d_conv5', reuse=reuse, padding='SAME')
+   return conv5
+   '''
    print 'DISCRIMINATOR reuse = '+str(reuse)
    sc = tf.get_variable_scope()
    with tf.variable_scope(sc, reuse=reuse):
@@ -70,4 +105,4 @@ def netD(input_images, batch_size, reuse=False):
       tf.add_to_collection('vars', conv4)
       tf.add_to_collection('vars', fc)
       return fc
-
+   '''
