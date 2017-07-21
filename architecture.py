@@ -8,16 +8,16 @@ def netG(z, batch_size):
 
    z = tf.layers.dense(z, 4*4*1024, name='g_z')
    z = tf.reshape(z, [batch_size, 4, 4, 1024])
-   z = bn(relu(z))
+   z = relu(bn(z))
 
    conv1 = tf.layers.conv2d_transpose(z, 512, 5, strides=2, name='g_conv1', padding='SAME')
-   conv1 = bn(relu(conv1))
+   conv1 = relu(bn(conv1))
    
    conv2 = tf.layers.conv2d_transpose(conv1, 256, 5, strides=2, name='g_conv2', padding='SAME')
-   conv2 = bn(relu(conv2))
+   conv2 = relu(bn(conv2))
 
    conv3 = tf.layers.conv2d_transpose(conv2, 128, 5, strides=2, name='g_conv3', padding='SAME')
-   conv3 = bn(relu(conv3))
+   conv3 = relu(bn(conv3))
 
    conv4 = tf.layers.conv2d_transpose(conv3, 3, 5, strides=2, name='g_conv4', padding='SAME')
    conv4 = tf.nn.tanh(conv4)

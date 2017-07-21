@@ -18,20 +18,24 @@ if __name__ == '__main__':
    parser = argparse.ArgumentParser()
    parser.add_argument('--DATASET',    required=True,help='The DATASET to use')
    parser.add_argument('--DATA_DIR',   required=True,help='Directory where data is')
-   parser.add_argument('--BATCH_SIZE', required=True,help='Batch size',type=int)
+   parser.add_argument('--BATCH_SIZE', required=False,help='Batch size',type=int,default=128)
+   parser.add_argument('--NORM',       required=False,help='Use layer normalization in D',type=int,default=0)
+   parser.add_argument('--SELU',       required=False,help='Use SELU',type=int,default=0)
+   parser.add_argument('--SCALE',      required=False,help='Scale of gradient penalty',type=int,default=10)
    a = parser.parse_args()
 
    DATASET        = a.DATASET
    DATA_DIR       = a.DATA_DIR
    BATCH_SIZE     = a.BATCH_SIZE
-   CHECKPOINT_DIR = 'checkpoints/'+DATASET+'/'
-   IMAGES_DIR     = CHECKPOINT_DIR+'images/'
+   SCALE          = a.SCALE
+   NORM           = bool(a.NORM)
+   SELU           = bool(a.SELU)
 
-   try: os.mkdir('checkpoints/')
-   except: pass
-   try: os.mkdir(CHECKPOINT_DIR)
-   except: pass
-   try: os.mkdir(IMAGES_DIR)
+   CHECKPOINT_DIR = 'checkpoints/DATASET_'+DATASET+'/SCALE_'+str(SCALE)+'/NORM_'+str(NORM)+'/SELU_'+str(SELU)+'/'
+   IMAGES_DIR     = CHECKPOINT_DIR+'images/'
+   print IMAGES_DIR
+   exit()
+   try: os.makedirs(IMAGES_DIR)
    except: pass
    
    # placeholders for data going into the network
@@ -52,7 +56,8 @@ if __name__ == '__main__':
    # cost functions
    errD = tf.reduce_mean(errD_real) - tf.reduce_mean(errD_fake)
    errG = tf.reduce_mean(errD_fake)
-   
+
+   # gradient penalty
    epsilon = tf.random_uniform([], 0.0, 1.0)
    x_hat = real_images*epsilon + (1-epsilon)*gen_images
    d_hat = netD(x_hat, BATCH_SIZE, reuse=True)
