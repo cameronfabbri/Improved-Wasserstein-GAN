@@ -7,6 +7,9 @@ Datasets
 
 ___
 
+### How to Run
+`python train.py --DATASET=celeba --DATA_DIR=/path/to/celeba/`
+
 ### Results
 
 ![img](http://i.imgur.com/SgXTiDs.jpg)
