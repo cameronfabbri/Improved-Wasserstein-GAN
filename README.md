@@ -19,6 +19,10 @@ would conflict with the gradient penalty. Default is to not use these, but they 
 
 
 ### Results
+Here are some non cherry picked results after ~100,000 training steps with batch size 128. To create an
+image like this, simply run,
+
+`python createPhotos.py checkpoints/path/to/checkpoint_file`
 
 ![img](http://i.imgur.com/SgXTiDs.jpg)
 
