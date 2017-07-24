@@ -28,8 +28,10 @@ To create an image like this, simply run `createPhotos.py` and point towards you
 
 `python createPhotos.py checkpoints/DATASET_celeba/SCALE_10/NORM_False/SELU_False/`
 
+##### Layer Normalization in D
 ![layer_norm](http://i.imgur.com/dYbqddh.jpg)
 
+##### No Normalization in D
 ![no_norm](http://i.imgur.com/CSIZ7kl.jpg)
 
 ### Notes
