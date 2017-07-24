@@ -21,13 +21,16 @@ but they can be used by,
 
 
 ### Results
-Here are some non cherry picked results after ~100,000 training steps with batch size 128. To create an
-image like this, simply run `createPhotos.py` and point towards your checkpoint directory, like so,
+Here are some non cherry picked results after 100,000 training steps with batch size 128. The first
+image uses layer normalization, while the second image does not.
+
+To create an image like this, simply run `createPhotos.py` and point towards your checkpoint directory, like so,
 
 `python createPhotos.py checkpoints/DATASET_celeba/SCALE_10/NORM_False/SELU_False/`
 
-![img](http://i.imgur.com/SgXTiDs.jpg)
+![layer_norm](http://i.imgur.com/dYbqddh.jpg)
 
+![no_norm](http://i.imgur.com/CSIZ7kl.jpg)
 
 ### Notes
 - Initial trials of SELU activations did not work, the model diverged pretty quickly.
