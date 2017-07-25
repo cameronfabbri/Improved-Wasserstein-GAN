@@ -69,7 +69,10 @@ def getPaths(data_dir, ext='jpg'):
    Loads the image paths
 '''
 def loadData(data_dir, dataset):
-   
+
+   if dataset == 'pokemon': ext='png'
+   if dataset == 'celeba': ext='jpg'
+
    pkl_file = dataset+'.pkl'
    if os.path.isfile(pkl_file):
       print 'Pickle file found'
@@ -77,7 +80,7 @@ def loadData(data_dir, dataset):
       return image_paths
    else:
       print 'Getting paths!'
-      image_paths = getPaths(data_dir)
+      image_paths = getPaths(data_dir, ext=ext)
       pf   = open(pkl_file, 'wb')
       data = pickle.dumps(image_paths)
       pf.write(data)
