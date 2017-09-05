@@ -70,6 +70,7 @@ def getPaths(data_dir, ext='jpg'):
 '''
 def loadData(data_dir, dataset):
 
+   ext = 'png'
    if dataset == 'pokemon': ext='png'
    if dataset == 'celeba': ext='jpg'
 
@@ -81,6 +82,7 @@ def loadData(data_dir, dataset):
    else:
       print 'Getting paths!'
       image_paths = getPaths(data_dir, ext=ext)
+      print 'Found',len(image_paths),'images'
       pf   = open(pkl_file, 'wb')
       data = pickle.dumps(image_paths)
       pf.write(data)
