@@ -56,7 +56,7 @@ def saveImage(images, step, image_dir):
    Inputs: A directory containing images (can have nested dirs inside) and optional extension
    Outputs: A list of image paths
 '''
-def getPaths(data_dir, ext='jpg'):
+def getPaths(data_dir, ext='png'):
    pattern   = '*.'+ext
    image_list = []
    for d, s, fList in os.walk(data_dir):

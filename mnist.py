@@ -86,7 +86,7 @@ if __name__ == '__main__':
    parser.add_argument('--NORM',       required=False,help='Use layer normalization in D',type=int,default=0)
    parser.add_argument('--SELU',       required=False,help='Use SELU',type=int,default=0)
    parser.add_argument('--SCALE',      required=False,help='Scale of gradient penalty',type=int,default=10)
-   parser.add_argument('--MAX_STEPS',  required=False,help='How long to train',type=int,default=100000)
+   parser.add_argument('--MAX_STEPS',  required=False,help='How long to train',type=int,default=1000000)
    a = parser.parse_args()
 
    DATASET        = a.DATASET
